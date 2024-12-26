@@ -1,5 +1,6 @@
 package service.application;
 
+import io.micronaut.configuration.kafka.annotation.KafkaListener;
 import jakarta.inject.Singleton;
 import service.domain.*;
 
@@ -14,10 +15,20 @@ import java.util.Optional;
 public class BikeManagerLogic implements BikeManager, BikeEndpoint {
 
     private BikeDatabase bikeDatabase;
-    private List<BikeManagerListener> listeners = new ArrayList<>();
+    private StationDatabase stationDatabase;
+    private EventController eventController;
 
-    public BikeManagerLogic(BikeDatabase bikeDatabase) {
+    public BikeManagerLogic(BikeDatabase bikeDatabase, StationDatabase stationDatabase, EventController eventController) {
         this.bikeDatabase = bikeDatabase;
+        this.stationDatabase = stationDatabase;
+        this.eventController = eventController;
+
+        // event handlers
+        eventController.whenBikeUpdated(bike -> {
+            try {
+                updateBike(bike.getID(), bike.getBatteryLevel(), bike.getPosition());
+            } catch (BikeOperationException ignored) {}
+        });
     }
 
     @Override
@@ -31,6 +42,11 @@ public class BikeManagerLogic implements BikeManager, BikeEndpoint {
     }
 
     @Override
+    public List<Station> getAllStations() {
+        return stationDatabase.getAll();
+    }
+
+    @Override
     public void addBike(String id, int battery, V2d position) throws BikeOperationException {
         var bike = bikeDatabase.get(id);
         if (bike.isPresent()) {
@@ -38,7 +54,26 @@ public class BikeManagerLogic implements BikeManager, BikeEndpoint {
         } else {
             var newBike = new EBike(id, battery, position);
             bikeDatabase.add(newBike);
-            listeners.forEach(l -> l.onBikeAdd(newBike));
+            // dispatch event
+            eventController.sendBikeAdded(newBike);
+        }
+    }
+
+    @Override
+    public void callBike(String id, V2d position) throws BikeOperationException {
+        // TODO
+    }
+
+    @Override
+    public void addStation(String id, V2d position) throws BikeOperationException {
+        var s = getAllStations().stream().filter(station -> station.id() == id || station.position() == position).findFirst();
+        if (s.isPresent()) {
+            throw new BikeOperationException("Station " + id + " already exists");
+        } else {
+            var newStation = new Station(id, position);
+            stationDatabase.add(newStation);
+            // dispatch event
+            eventController.sendStationAdded(newStation);
         }
     }
 
@@ -47,14 +82,8 @@ public class BikeManagerLogic implements BikeManager, BikeEndpoint {
         var bike = bikeDatabase.get(id);
         if (bike.isPresent()) {
             bikeDatabase.setBatteryAndPosition(bike.get(), battery, position);
-            listeners.forEach(l -> l.onBikeUpdate(bike.get(), bikeDatabase.get(id).get()));
         } else {
             throw new BikeOperationException("EBike " + id + " does not exist");
         }
-    }
-
-    @Override
-    public void addListener(BikeManagerListener listener) {
-        listeners.add(listener);
     }
 }
