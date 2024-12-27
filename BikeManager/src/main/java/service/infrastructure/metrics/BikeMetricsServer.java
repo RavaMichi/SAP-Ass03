@@ -7,6 +7,7 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Produces;
 import service.application.BikeManager;
+import service.application.EventController;
 import service.domain.EBike;
 
 @Controller("/metrics")
@@ -15,10 +16,11 @@ public class BikeMetricsServer {
     private final Counter totalBikes;
     private double avgBatteryLevel;
     private PrometheusMeterRegistry prometheusRegistry;
+    private EventController eventController;
 
-    public BikeMetricsServer(BikeManager bikeManager, PrometheusMeterRegistry meterRegistry) {
-        bikeManager.addListener(this);
+    public BikeMetricsServer(BikeManager bikeManager, PrometheusMeterRegistry meterRegistry, EventController eventController) {
         this.prometheusRegistry = meterRegistry;
+        this.eventController = eventController;
 
         // track the number of bikes
         totalBikes = Counter.builder("number_of_bikes")
@@ -38,19 +40,20 @@ public class BikeMetricsServer {
                 .orElse(0.0);
 
         System.out.println("Prometheus ready");
+
+        eventController.whenBikeAdded(this::onBikeAdd);
+        eventController.whenBikeUpdated(this::onBikeUpdate);
     }
 
     private double getAvgBatteryLevel() {
         return avgBatteryLevel;
     }
 
-    @Override
     public void onBikeAdd(EBike newBike) {
         totalBikes.increment();
         avgBatteryLevel = recalculateAverage(newBike.getBatteryLevel(), true);
     }
 
-    @Override
     public void onBikeUpdate(EBike previousBike, EBike updatedBike) {
         avgBatteryLevel = recalculateAverage(updatedBike.getBatteryLevel() - previousBike.getBatteryLevel(), false);
     }
