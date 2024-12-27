@@ -24,7 +24,7 @@ public class FileStationDatabase implements StationDatabase {
 
     @Inject
     public FileStationDatabase() {
-        this(Config.bikeDatabasePath);
+        this(Config.stationDatabasePath);
     }
 
     public FileStationDatabase(String path) {
