@@ -1,5 +1,7 @@
 package service.domain;
 
+import io.micronaut.serde.annotation.Serdeable;
+
 import java.util.Objects;
 
 /**
@@ -7,6 +9,7 @@ import java.util.Objects;
  * @param username
  * @param password
  */
+@Serdeable
 public record User(String username, String password) implements java.io.Serializable {
     @Override
     public boolean equals(Object o) {

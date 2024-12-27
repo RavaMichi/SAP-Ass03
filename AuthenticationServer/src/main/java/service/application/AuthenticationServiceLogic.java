@@ -14,10 +14,12 @@ public class AuthenticationServiceLogic implements AuthenticationService {
 
     private final TokenGenerator tokenGenerator;
     private final UserDatabase userDatabase;
+    private EventController eventController;
 
-    public AuthenticationServiceLogic(TokenGenerator tokenGenerator, UserDatabase userDatabase) {
+    public AuthenticationServiceLogic(TokenGenerator tokenGenerator, UserDatabase userDatabase, EventController eventController) {
         this.tokenGenerator = tokenGenerator;
         this.userDatabase = userDatabase;
+        this.eventController = eventController;
     }
 
     @Override
@@ -41,6 +43,8 @@ public class AuthenticationServiceLogic implements AuthenticationService {
             throw new AuthenticationException("User already registered");
         }
         userDatabase.addUser(new User(username, password));
+        // dispatch event
+        eventController.sendUserAdded(username);
         return authenticate(username, password);
     }
 }
