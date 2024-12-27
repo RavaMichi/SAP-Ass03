@@ -7,6 +7,7 @@ import io.micronaut.http.annotation.*;
 import service.application.BikeManager;
 import service.domain.BikeOperationException;
 import service.domain.EBike;
+import service.domain.Station;
 import service.infrastructure.JsonConverter;
 import service.infrastructure.auth.AuthChecker;
 
@@ -50,6 +51,31 @@ public class BikeManagerAPI {
             if (authChecker.hasAdminPermissions(token)) {
                 bikeManager.addBike(req.id(), req.battery(), req.position());
                 return HttpResponse.created(new BMResponse("EBike " + req.id() + " added", false));
+            } else {
+                return HttpResponse.unauthorized();
+            }
+        } catch (BikeOperationException e) {
+            return HttpResponse.badRequest(new BMResponse(e.getMessage(), true));
+        }
+    }
+
+    @Get("/stations")
+    public HttpResponse<String> getAllStations(@Header(HttpHeaders.AUTHORIZATION) String token) {
+        if (authChecker.hasUserPermissions(token)) {
+            return HttpResponse.ok(JsonConverter.toJson(bikeManager.getAllStations()));
+        } else {
+            return HttpResponse.unauthorized();
+        }
+    }
+    @Post("/stations/add")
+    public HttpResponse<BMResponse> addStation(
+            @Header(HttpHeaders.AUTHORIZATION) String token,
+            @Body Station req
+    ) {
+        try {
+            if (authChecker.hasAdminPermissions(token)) {
+                bikeManager.addStation(req.id(), req.position());
+                return HttpResponse.created(new BMResponse("Station " + req.id() + " added", false));
             } else {
                 return HttpResponse.unauthorized();
             }
