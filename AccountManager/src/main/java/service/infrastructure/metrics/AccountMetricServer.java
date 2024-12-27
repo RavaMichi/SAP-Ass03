@@ -37,7 +37,7 @@ public class AccountMetricServer {
         eventController.whenUserUpdated((old, newer) -> onUserCreditSet(old, old.getCredits(), newer.getCredits()));
     }
 
-    public void onUserAdded(User user) {
+    public void onUserAdded(String username) {
         userCount.increment();
     }
 

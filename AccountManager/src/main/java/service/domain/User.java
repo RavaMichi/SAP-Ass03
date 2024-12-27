@@ -1,8 +1,11 @@
 package service.domain;
 
+import io.micronaut.serde.annotation.Serdeable;
+
 /**
  * Entity object. Represents a user, with proper account and credits
  */
+@Serdeable
 public class User implements java.io.Serializable {
     private final String username;
     private int credits;

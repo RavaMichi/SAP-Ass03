@@ -20,6 +20,10 @@ public class AccountManagerLogic implements AccountManager{
     public AccountManagerLogic(AccountDatabase accountDatabase, EventController eventController) {
         this.accountDatabase = accountDatabase;
         this.eventController = eventController;
+
+        // User Added event comes from the Authentication Service
+        // on new user, add him with default credits
+        eventController.whenUserAdded(this::addUser);
     }
 
     @Override
@@ -39,8 +43,6 @@ public class AccountManagerLogic implements AccountManager{
         } else {
             User newUser = new User(username, 0);
             accountDatabase.add(newUser);
-            // dispatch event
-            eventController.sendUserAdded(newUser);
         }
     }
 

@@ -9,8 +9,8 @@ import java.util.function.Consumer;
  * Used to manage user account events
  */
 public interface EventController {
-    void whenUserAdded(Consumer<User> handler);
-    void sendUserAdded(User user);
+    void whenUserAdded(Consumer<String> handler);
+    void sendUserAdded(String username);
 
     void whenUserUpdated(BiConsumer<User, User> handler);
     void sendUserUpdated(User old, User newer);
