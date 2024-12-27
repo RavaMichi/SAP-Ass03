@@ -10,7 +10,7 @@ import service.application.BikeManager;
 import service.domain.EBike;
 
 @Controller("/metrics")
-public class BikeMetricsServer implements BikeManagerListener {
+public class BikeMetricsServer {
 
     private final Counter totalBikes;
     private double avgBatteryLevel;

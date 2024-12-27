@@ -24,9 +24,9 @@ public class BikeManagerLogic implements BikeManager, BikeEndpoint {
         this.eventController = eventController;
 
         // event handlers
-        eventController.whenBikeUpdated(bike -> {
+        eventController.whenBikeUpdated((old, newer) -> {
             try {
-                updateBike(bike.getID(), bike.getBatteryLevel(), bike.getPosition());
+                updateBike(newer.getID(), newer.getBatteryLevel(), newer.getPosition());
             } catch (BikeOperationException ignored) {}
         });
     }

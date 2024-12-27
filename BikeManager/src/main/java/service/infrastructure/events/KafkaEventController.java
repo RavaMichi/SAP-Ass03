@@ -1,4 +1,4 @@
-package service.infrastructure.endpoints;
+package service.infrastructure.events;
 
 import io.micronaut.configuration.kafka.annotation.KafkaKey;
 import io.micronaut.configuration.kafka.annotation.KafkaListener;
@@ -13,6 +13,7 @@ import service.domain.Station;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -25,7 +26,7 @@ public class KafkaEventController implements EventController {
     private JsonMapper jsonMapper = new JacksonDatabindMapper();
 
     private final List<Consumer<EBike>> bikeAddedConsumers = new ArrayList<>();
-    private final List<Consumer<EBike>> bikeUpdatedConsumers = new ArrayList<>();
+    private final List<BiConsumer<EBike, EBike>> bikeUpdatedConsumers = new ArrayList<>();
     private final List<Consumer<EBike>> bikeCalledConsumers = new ArrayList<>();
     private final List<Consumer<Station>> stationAddedConsumers = new ArrayList<>();
 
@@ -36,11 +37,19 @@ public class KafkaEventController implements EventController {
     @Topic("bike-topic")
     public void receiveBikeEvent(@KafkaKey String event, String value) {
         try {
-            EBike bike = jsonMapper.readValue(value, EBike.class);
             switch (event) {
-                case "ADDED" -> bikeAddedConsumers.forEach(c -> c.accept(bike));
-                case "UPDATED" -> bikeUpdatedConsumers.forEach(c -> c.accept(bike));
-                case "CALLED" -> bikeCalledConsumers.forEach(c -> c.accept(bike));
+                case "ADDED" -> {
+                    EBike bike = jsonMapper.readValue(value, EBike.class);
+                    bikeAddedConsumers.forEach(c -> c.accept(bike));
+                }
+                case "UPDATED" -> {
+                    List<EBike> bikes = jsonMapper.readValue(value, List.class);
+                    bikeUpdatedConsumers.forEach(c -> c.accept(bikes.getFirst(), bikes.get(1)));
+                }
+                case "CALLED" -> {
+                    EBike bike = jsonMapper.readValue(value, EBike.class);
+                    bikeCalledConsumers.forEach(c -> c.accept(bike));
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -76,15 +85,16 @@ public class KafkaEventController implements EventController {
     }
 
     @Override
-    public void whenBikeUpdated(Consumer<EBike> handler) {
+    public void whenBikeUpdated(BiConsumer<EBike, EBike> handler) {
         this.bikeUpdatedConsumers.add(handler);
     }
 
 
     @Override
-    public void sendBikeUpdated(EBike bike) {
+    public void sendBikeUpdated(EBike old, EBike newer) {
         try {
-            eventClient.sendBikeEvent("UPDATED", jsonMapper.writeValueAsString(bike));
+            List<EBike> pair = List.of(old, newer);
+            eventClient.sendBikeEvent("UPDATED", jsonMapper.writeValueAsString(pair));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
