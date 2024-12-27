@@ -10,6 +10,7 @@ import service.application.EventController;
 import service.domain.EBike;
 import service.domain.Station;
 import service.domain.V2d;
+import service.infrastructure.JsonConverter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class KafkaEventController implements EventController {
     @Topic("bike-topic")
     public void receiveBikeEvent(@KafkaKey String event, String value) {
         try {
+            System.out.println("Received bike event: " + event + value);
             switch (event) {
                 case "ADDED" -> {
                     EBike bike = jsonMapper.readValue(value, EBike.class);
@@ -54,6 +56,7 @@ public class KafkaEventController implements EventController {
             }
         } catch (IOException ignored) {
             System.out.println("Event ignored: " + event + value);
+            ignored.printStackTrace();
         }
 
     }
@@ -77,11 +80,7 @@ public class KafkaEventController implements EventController {
 
     @Override
     public void sendBikeAdded(EBike bike) {
-        try {
-            eventClient.sendBikeEvent("ADDED", jsonMapper.writeValueAsString(bike));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        eventClient.sendBikeEvent("ADDED", JsonConverter.toJson(bike));
     }
 
     @Override
@@ -92,12 +91,8 @@ public class KafkaEventController implements EventController {
 
     @Override
     public void sendBikeUpdated(EBike old, EBike newer) {
-        try {
-            List<EBike> pair = List.of(old, newer);
-            eventClient.sendBikeEvent("UPDATED", jsonMapper.writeValueAsString(pair));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        List<EBike> pair = List.of(old, newer);
+        eventClient.sendBikeEvent("UPDATED", JsonConverter.toJson(pair));
     }
 
     @Override

@@ -1,11 +1,13 @@
 package service.infrastructure.endpoints;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.micronaut.http.HttpHeaders;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.*;
 import service.application.BikeManager;
 import service.domain.BikeOperationException;
 import service.domain.EBike;
+import service.infrastructure.JsonConverter;
 import service.infrastructure.auth.AuthChecker;
 
 import java.util.List;
@@ -22,18 +24,18 @@ public class BikeManagerAPI {
     }
 
     @Get
-    public HttpResponse<List<EBike>> getAllBikes(@Header(HttpHeaders.AUTHORIZATION) String token) {
+    public HttpResponse<String> getAllBikes(@Header(HttpHeaders.AUTHORIZATION) String token) {
         if (authChecker.hasUserPermissions(token)) {
-            return HttpResponse.ok(bikeManager.getAllBikes());
+            return HttpResponse.ok(JsonConverter.toJson(bikeManager.getAllBikes()));
         } else {
             return HttpResponse.unauthorized();
         }
     }
 
     @Get("/{id}")
-    public HttpResponse<Optional<EBike>> getBike(@Header(HttpHeaders.AUTHORIZATION) String token, String id) {
+    public HttpResponse<String> getBike(@Header(HttpHeaders.AUTHORIZATION) String token, String id) {
         if (authChecker.hasUserPermissions(token)) {
-            return HttpResponse.ok(bikeManager.getBike(id));
+            return HttpResponse.ok(bikeManager.getBike(id).map(JsonConverter::toJson).orElse("null"));
         } else {
             return HttpResponse.unauthorized();
         }

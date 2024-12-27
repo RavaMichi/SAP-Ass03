@@ -1,6 +1,7 @@
 package service.infrastructure.endpoints;
 
 import io.micronaut.core.annotation.Introspected;
+import io.micronaut.serde.annotation.Serdeable;
 import service.domain.V2d;
 
 /**
@@ -9,7 +10,7 @@ import service.domain.V2d;
  * @param battery
  * @param position
  */
-@Introspected
+@Serdeable
 public record BMRequest(
         String id,
         int battery,

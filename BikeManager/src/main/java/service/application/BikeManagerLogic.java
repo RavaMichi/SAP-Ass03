@@ -38,6 +38,7 @@ public class BikeManagerLogic implements BikeManager, BikeEndpoint {
 
     @Override
     public List<EBike> getAllBikes() {
+        bikeDatabase.getAll().forEach(b -> System.out.println(b.getID() + " " + b.getBatteryLevel() + " " + b.getPosition()));
         return bikeDatabase.getAll();
     }
 

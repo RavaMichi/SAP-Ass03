@@ -1,15 +1,18 @@
 package service.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import io.micronaut.core.annotation.Introspected;
+import io.micronaut.serde.annotation.Serdeable;
 
 /**
  * Value object. Represents a 2D vector.
  */
-@Introspected
+@Serdeable
 public class V2d implements java.io.Serializable {
     private final double x;
     private final double y;
 
+    @JsonCreator
     public V2d(double x, double y) {
         this.x = x;
         this.y = y;

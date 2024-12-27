@@ -1,20 +1,23 @@
 package service.domain;
 
-import io.micronaut.core.annotation.Introspected;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.micronaut.serde.annotation.Serdeable;
 
 /**
  * Entity object. Represents an EBike.
  */
-@Introspected
+@Serdeable
 public class EBike implements java.io.Serializable {
 
     private final String id;
     private int battery;
     private V2d position;
 
-    public EBike(String id, int batteryLevel, V2d position) {
+    @JsonCreator
+    public EBike(String id, int battery, V2d position) {
         this.id = id;
-        updateBatteryLevel(batteryLevel);
+        updateBatteryLevel(battery);
         updatePosition(position);
     }
     public String getID() {
