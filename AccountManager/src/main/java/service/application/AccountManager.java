@@ -14,6 +14,4 @@ public interface AccountManager {
     void addUser(String username) throws AccountOperationException;
     void addCreditToUser(String username, int amount) throws AccountOperationException;
     void removeCreditFromUser(String username, int amount) throws AccountOperationException;
-
-    void addListener(AccountManagerListener listener);
 }

@@ -15,10 +15,11 @@ import java.util.Optional;
 public class AccountManagerLogic implements AccountManager{
 
     private final AccountDatabase accountDatabase;
-    private final List<AccountManagerListener> listeners = new ArrayList<>();
+    private EventController eventController;
 
-    public AccountManagerLogic(AccountDatabase accountDatabase) {
+    public AccountManagerLogic(AccountDatabase accountDatabase, EventController eventController) {
         this.accountDatabase = accountDatabase;
+        this.eventController = eventController;
     }
 
     @Override
@@ -38,7 +39,8 @@ public class AccountManagerLogic implements AccountManager{
         } else {
             User newUser = new User(username, 0);
             accountDatabase.add(newUser);
-            this.listeners.forEach(l -> l.onUserAdded(newUser));
+            // dispatch event
+            eventController.sendUserAdded(newUser);
         }
     }
 
@@ -48,16 +50,12 @@ public class AccountManagerLogic implements AccountManager{
         int prevCredits = u.getCredits();
         int newCredits = amount + prevCredits;
         accountDatabase.updateCredit(u, newCredits);
-        this.listeners.forEach(l -> l.onUserCreditSet(u, prevCredits, newCredits));
+        // dispatch event
+        eventController.sendUserUpdated(u, getUser(username).get());
     }
 
     @Override
     public void removeCreditFromUser(String username, int amount) throws AccountOperationException {
         addCreditToUser(username, -amount);
-    }
-
-    @Override
-    public void addListener(AccountManagerListener listener) {
-        this.listeners.add(listener);
     }
 }

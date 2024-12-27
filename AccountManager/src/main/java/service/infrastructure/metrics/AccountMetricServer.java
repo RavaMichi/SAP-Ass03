@@ -7,7 +7,6 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Produces;
 import service.application.AccountManager;
-import service.application.AccountManagerListener;
 import service.domain.User;
 
 @Controller("/metrics")
