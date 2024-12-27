@@ -7,18 +7,20 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Produces;
 import service.application.AccountManager;
+import service.application.EventController;
 import service.domain.User;
 
 @Controller("/metrics")
-public class AccountMetricServer implements AccountManagerListener {
+public class AccountMetricServer {
 
     private final Counter userCount;
     private final Counter transactionCount;
     private PrometheusMeterRegistry prometheusRegistry;
+    private EventController eventController;
 
-    public AccountMetricServer(AccountManager accountManager, PrometheusMeterRegistry meterRegistry) {
-        accountManager.addListener(this);
+    public AccountMetricServer(AccountManager accountManager, PrometheusMeterRegistry meterRegistry, EventController eventController) {
         this.prometheusRegistry = meterRegistry;
+        this.eventController = eventController;
 
         // setup user counter
         this.userCount = Counter.builder("number_of_users")
@@ -30,14 +32,15 @@ public class AccountMetricServer implements AccountManagerListener {
         this.transactionCount = Counter.builder("number_of_transactions")
                 .description("The total number of transactions executed in the service")
                 .register(meterRegistry);
+
+        eventController.whenUserAdded(this::onUserAdded);
+        eventController.whenUserUpdated((old, newer) -> onUserCreditSet(old, old.getCredits(), newer.getCredits()));
     }
 
-    @Override
     public void onUserAdded(User user) {
         userCount.increment();
     }
 
-    @Override
     public void onUserCreditSet(User user, int oldAmount, int newAmount) {
         transactionCount.increment();
     }
