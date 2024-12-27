@@ -9,6 +9,7 @@ import io.micronaut.json.JsonMapper;
 import service.application.EventController;
 import service.domain.EBike;
 import service.domain.Station;
+import service.domain.V2d;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ public class KafkaEventController implements EventController {
 
     private final List<Consumer<EBike>> bikeAddedConsumers = new ArrayList<>();
     private final List<BiConsumer<EBike, EBike>> bikeUpdatedConsumers = new ArrayList<>();
-    private final List<Consumer<EBike>> bikeCalledConsumers = new ArrayList<>();
+    private final List<BiConsumer<EBike, V2d>> bikeCalledConsumers = new ArrayList<>();
     private final List<Consumer<Station>> stationAddedConsumers = new ArrayList<>();
 
     public KafkaEventController(KafkaEventClient eventClient) {
@@ -43,16 +44,16 @@ public class KafkaEventController implements EventController {
                     bikeAddedConsumers.forEach(c -> c.accept(bike));
                 }
                 case "UPDATED" -> {
-                    List<EBike> bikes = jsonMapper.readValue(value, List.class);
-                    bikeUpdatedConsumers.forEach(c -> c.accept(bikes.getFirst(), bikes.get(1)));
+                    List<?> bikes = jsonMapper.readValue(value, List.class);
+                    bikeUpdatedConsumers.forEach(c -> c.accept((EBike)bikes.getFirst(), (EBike)bikes.get(1)));
                 }
                 case "CALLED" -> {
-                    EBike bike = jsonMapper.readValue(value, EBike.class);
-                    bikeCalledConsumers.forEach(c -> c.accept(bike));
+                    List<?> pair = jsonMapper.readValue(value, List.class);
+                    bikeCalledConsumers.forEach(c -> c.accept((EBike) pair.getFirst(), (V2d) pair.get(1)));
                 }
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException ignored) {
+            System.out.println("Event ignored: " + event + value);
         }
 
     }
@@ -64,10 +65,9 @@ public class KafkaEventController implements EventController {
             switch (event) {
                 case "ADDED" -> stationAddedConsumers.forEach(c -> c.accept(station));
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException ignored) {
+            System.out.println("Event ignored: " + event + value);
         }
-
     }
 
     @Override
@@ -101,15 +101,16 @@ public class KafkaEventController implements EventController {
     }
 
     @Override
-    public void whenBikeCalled(Consumer<EBike> handler) {
+    public void whenBikeCalled(BiConsumer<EBike, V2d> handler) {
         this.bikeCalledConsumers.add(handler);
     }
 
 
     @Override
-    public void sendBikeCalled(EBike bike) {
+    public void sendBikeCalled(EBike bike, V2d target) {
         try {
-            eventClient.sendBikeEvent("CALLED", jsonMapper.writeValueAsString(bike));
+            List<?> pair = List.of(bike, target);
+            eventClient.sendBikeEvent("CALLED", jsonMapper.writeValueAsString(pair));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

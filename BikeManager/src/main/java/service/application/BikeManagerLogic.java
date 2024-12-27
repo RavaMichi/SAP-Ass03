@@ -61,7 +61,13 @@ public class BikeManagerLogic implements BikeManager, BikeEndpoint {
 
     @Override
     public void callBike(String id, V2d position) throws BikeOperationException {
-        // TODO
+        // call a bike by sending a message. Doesn't wait for reply nor check if it can be called
+        var bike = bikeDatabase.get(id);
+        if (bike.isEmpty()) {
+            throw new BikeOperationException("EBike " + id + " does not exist");
+        } else {
+            eventController.sendBikeCalled(bike.get(), position);
+        }
     }
 
     @Override
