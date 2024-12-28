@@ -12,47 +12,61 @@ import java.util.*;
 @Singleton
 public class RideManagerLogic implements RideManager {
     private final RideDatabase database;
-    private final BikeManager bikeManager;
-    private final AccountManager accountManager;
+    private BikeDatabase bikeDatabase;
+    private AccountDatabase accountDatabase;
     private final FeeCalculator feeCalculator;
-    private final List<RideManagerListener> listeners = new ArrayList<>();
+    private EventController eventController;
 
-    public RideManagerLogic(RideDatabase database, BikeManager bikeManager, AccountManager accountManager, FeeCalculator feeCalculator) {
+    public RideManagerLogic(RideDatabase database, BikeDatabase bikeDatabase, AccountDatabase accountDatabase, FeeCalculator feeCalculator, EventController eventController) {
         this.database = database;
-        this.bikeManager = bikeManager;
-        this.accountManager = accountManager;
+        this.bikeDatabase = bikeDatabase;
+        this.accountDatabase = accountDatabase;
         this.feeCalculator = feeCalculator;
+        this.eventController = eventController;
+
+        // register handlers
+        eventController.whenRideStarted(database::saveRide);
+        eventController.whenRideEnded((ride, date) -> {
+            database.deleteRide(ride);
+            // compute fee
+            int fee = feeCalculator.calculateFee(ride.startingTime(), date);
+            int startCredits = accountDatabase.getCredits(ride.userId());
+            accountDatabase.deductCreditsFromUser(ride.userId(), fee);
+            int endCredits = accountDatabase.getCredits(ride.userId());
+
+            eventController.sendUserUpdated(ride.userId(), startCredits, endCredits);
+        });
+        eventController.whenBikeAdded(bikeDatabase::saveBike);
+        eventController.whenUserAdded(id -> accountDatabase.saveUser(id, 0));
+        eventController.whenUserUpdated(accountDatabase::saveUser);
     }
 
     @Override
     public void connectUserToBike(String userId, String bikeId) throws RideManagerException {
-        if (!bikeManager.doesBikeExist(bikeId)) throw new RideManagerException("Bike does not exist");
-        if (!accountManager.doesUserExist(userId)) throw new RideManagerException("User does not exist");
+        if (!bikeDatabase.doesBikeExist(bikeId)) throw new RideManagerException("Bike does not exist");
+        if (!accountDatabase.doesUserExist(userId)) throw new RideManagerException("User does not exist");
         if (database.getAllRides().stream().anyMatch(r -> Objects.equals(r.bikeId(), bikeId) || Objects.equals(r.userId(), userId)))
             throw new RideManagerException("User or Bike already in use");
-        if (!accountManager.doesUserHaveEnoughCredits(userId, feeCalculator.minimumAmountForConnection()))
+        if (!accountDatabase.doesUserHaveEnoughCredits(userId, feeCalculator.minimumAmountForConnection()))
             throw new RideManagerException("User has not enough credits");
 
         Ride newRide = new Ride(userId, bikeId, new Date());
-        database.saveRide(newRide);
 
-        listeners.forEach(l -> l.onConnect(newRide));
+        // dispatch event
+        eventController.sendRideStarted(newRide);
     }
 
     @Override
     public void disconnectUserFromBike(String userId, String bikeId) throws RideManagerException {
-        if (!bikeManager.doesBikeExist(bikeId)) throw new RideManagerException("Bike does not exist");
-        if (!accountManager.doesUserExist(userId)) throw new RideManagerException("User does not exist");
+        if (!bikeDatabase.doesBikeExist(bikeId)) throw new RideManagerException("Bike does not exist");
+        if (!accountDatabase.doesUserExist(userId)) throw new RideManagerException("User does not exist");
         if (database.getRide(userId, bikeId).isEmpty()) throw new RideManagerException("User is not currently renting Bike");
 
         Date endTime = new Date();
         Ride ride = database.getRide(userId, bikeId).get();
-        database.deleteRide(ride);
-        // compute fee
-        int fee = feeCalculator.calculateFee(ride.startingTime(), endTime);
-        accountManager.deductCreditsFromUser(userId, fee);
 
-        listeners.forEach(l -> l.onDisconnect(ride, endTime));
+        // dispatch event
+        eventController.sendRideEnded(ride, endTime);
     }
 
     @Override
@@ -63,10 +77,5 @@ public class RideManagerLogic implements RideManager {
     @Override
     public Optional<Ride> getRide(String userId, String bikeId) {
         return database.getRide(userId, bikeId);
-    }
-
-    @Override
-    public void addListener(RideManagerListener listener) {
-        listeners.add(listener);
     }
 }

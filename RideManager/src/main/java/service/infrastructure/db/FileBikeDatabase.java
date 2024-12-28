@@ -2,7 +2,7 @@ package service.infrastructure.db;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import service.application.RideDatabase;
+import service.application.BikeDatabase;
 import service.domain.Ride;
 import service.infrastructure.Config;
 
@@ -18,16 +18,16 @@ import java.util.Optional;
  * Adapter file-based for Ride Database
  */
 @Singleton
-public class FileRideDatabase implements RideDatabase {
+public class FileBikeDatabase implements BikeDatabase {
     private final File db;
-    private final List<Ride> rides;
+    private final List<String> bikes;
 
     @Inject
-    public FileRideDatabase() {
-        this(Config.rideDatabasePath);
+    public FileBikeDatabase() {
+        this(Config.bikeDatabasePath);
     }
 
-    public FileRideDatabase(String path) {
+    public FileBikeDatabase(String path) {
         URL url = this.getClass().getResource("/" + path);
         try {
             assert url != null;
@@ -35,43 +35,32 @@ public class FileRideDatabase implements RideDatabase {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-        this.rides = readAllRides();
+        this.bikes = readAllBikes();
     }
 
-    @Override
-    public void saveRide(Ride ride) {
-        rides.add(ride);
-        writeAllRides();
-    }
-
-    @Override
-    public void deleteRide(Ride ride) {
-        rides.remove(ride);
-        writeAllRides();
-    }
-
-    @Override
-    public Optional<Ride> getRide(String userId, String bikeId) {
-        return rides.stream().filter(r -> Objects.equals(r.userId(), userId) && Objects.equals(r.bikeId(), bikeId)).findFirst();
-    }
-
-    @Override
-    public List<Ride> getAllRides() {
-        return List.copyOf(rides);
-    }
-
-    private List<Ride> readAllRides() {
+    private List<String> readAllBikes() {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(db))) {
-            return (List<Ride>) ois.readObject();
+            return (List<String>) ois.readObject();
         } catch (IOException | ClassNotFoundException e) {
             return new ArrayList<>();
         }
     }
-    private void writeAllRides() {
+    private void writeAllBikes() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(db))) {
-            oos.writeObject(rides);
+            oos.writeObject(bikes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void saveBike(String id) {
+        bikes.add(id);
+        writeAllBikes();
+    }
+
+    @Override
+    public boolean doesBikeExist(String bikeId) {
+        return bikes.contains(bikeId);
     }
 }

@@ -13,6 +13,4 @@ public interface RideManager {
     void disconnectUserFromBike(String userId, String bikeId) throws RideManagerException;
     List<Ride> getAllRides();
     Optional<Ride> getRide(String userId, String bikeId);
-
-    void addListener(RideManagerListener listener);
 }

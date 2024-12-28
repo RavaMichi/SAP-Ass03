@@ -7,24 +7,24 @@ import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Produces;
+import service.application.EventController;
 import service.application.RideManager;
-import service.application.RideManagerListener;
 import service.domain.Ride;
 
 import java.util.Date;
 
 @Controller("/metrics")
-public class RideMetricServer implements RideManagerListener {
+public class RideMetricServer {
 
     private final Counter rideCount;
     private double avgRideDuration;
     private int finishedRides = 0;
     private PrometheusMeterRegistry prometheusRegistry;
+    private EventController eventController;
 
-    public RideMetricServer(RideManager rideManager, PrometheusMeterRegistry meterRegistry) {
-        rideManager.addListener(this);
+    public RideMetricServer(RideManager rideManager, PrometheusMeterRegistry meterRegistry, EventController eventController) {
         this.prometheusRegistry = meterRegistry;
-
+        this.eventController = eventController;
         // setup user counter
         this.rideCount = Counter.builder("number_of_users")
                 .description("The total number of users registered in the service")
@@ -36,6 +36,9 @@ public class RideMetricServer implements RideManagerListener {
                 .description("The average duration of all rides, in minutes")
                 .register(meterRegistry);
         avgRideDuration = 0;
+
+        eventController.whenRideStarted(this::onConnect);
+        eventController.whenRideEnded(this::onDisconnect);
     }
 
     @Get
@@ -56,12 +59,10 @@ public class RideMetricServer implements RideManagerListener {
         return this.avgRideDuration;
     }
 
-    @Override
     public void onConnect(Ride newRide) {
         this.rideCount.increment();
     }
 
-    @Override
     public void onDisconnect(Ride oldRide, Date endTime) {
         this.rideCount.increment(-1);
         var time = (endTime.getTime() - oldRide.startingTime().getTime()) / 60000;
