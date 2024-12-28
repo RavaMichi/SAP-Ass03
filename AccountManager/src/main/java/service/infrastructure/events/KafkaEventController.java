@@ -27,6 +27,10 @@ public class KafkaEventController implements EventController {
     private final List<Consumer<String>> userAddedConsumers = new ArrayList<>();
     private final List<BiConsumer<User, User>> userUpdatedConsumers = new ArrayList<>();
 
+    public KafkaEventController(KafkaEventClient eventClient) {
+        this.eventClient = eventClient;
+    }
+
     @Topic("user-topic")
     public void receiveBikeEvent(@KafkaKey String event, String value) {
         try {
