@@ -26,6 +26,67 @@ services:
     networks:
       - service-ev-net
 
+  prometheus:
+    image: prom/prometheus
+    restart: always
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    networks:
+      - service-ev-net
+    ports:
+      - "9090:9090"
+    expose:
+      - 9090
+  bike-manager:
+    image: bike-manager
+    restart: always
+    container_name: bike-manager-01
+    networks:
+      - service-ev-net
+    ports:
+      - "9091:8080"
+    expose:
+      - 9091
+  account-manager:
+    image: account-manager
+    restart: always
+    container_name: account-manager-01
+    networks:
+      - service-ev-net
+    ports:
+      - "9092:8080"
+    expose:
+      - 9092
+  ride-manager:
+    image: ride-manager
+    restart: always
+    container_name: ride-manager-01
+    networks:
+      - service-ev-net
+    ports:
+      - "9093:8080"
+    expose:
+      - 9093
+  auth-service:
+    image: auth-service
+    restart: always
+    container_name: auth-service-01
+    networks:
+      - service-ev-net
+    ports:
+      - "9094:8080"
+    expose:
+      - 9094
+  api-gateway:
+    image: api-gateway
+    restart: always
+    container_name: api-gateway-01
+    networks:
+      - service-ev-net
+    ports:
+      - "8080:8080"
+    expose:
+      - 8080
 networks:
   service-ev-net:
     driver: bridge
