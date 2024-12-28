@@ -1,5 +1,8 @@
 package service.infrastructure.db;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micronaut.serde.annotation.Serdeable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import service.application.RideDatabase;
@@ -9,18 +12,18 @@ import service.infrastructure.Config;
 import java.io.*;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Adapter file-based for Ride Database
+ * Based on Event Sourcing
  */
 @Singleton
 public class FileRideDatabase implements RideDatabase {
     private final File db;
-    private final List<Ride> rides;
+    private final List<Ride> ridesQuery = new ArrayList<>(); // for queries
+    private static ObjectMapper mapper = new ObjectMapper();
+    private static final String sep = "@@";
 
     @Inject
     public FileRideDatabase() {
@@ -35,43 +38,99 @@ public class FileRideDatabase implements RideDatabase {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-        this.rides = readAllRides();
+        // initialize
+        restoreHistory();
     }
 
     @Override
     public void saveRide(Ride ride) {
-        rides.add(ride);
-        writeAllRides();
+        ridesQuery.add(ride);
+        appendRideEntry(new RideEntry(RideEvent.STARTED, ride, new Date()));
     }
 
     @Override
     public void deleteRide(Ride ride) {
-        rides.remove(ride);
-        writeAllRides();
+        ridesQuery.remove(ride);
+        appendRideEntry(new RideEntry(RideEvent.ENDED, ride, new Date()));
     }
 
     @Override
     public Optional<Ride> getRide(String userId, String bikeId) {
-        return rides.stream().filter(r -> Objects.equals(r.userId(), userId) && Objects.equals(r.bikeId(), bikeId)).findFirst();
+        return ridesQuery.stream().filter(r -> Objects.equals(r.userId(), userId) && Objects.equals(r.bikeId(), bikeId)).findFirst();
     }
 
     @Override
     public List<Ride> getAllRides() {
-        return List.copyOf(rides);
+        return List.copyOf(ridesQuery);
     }
 
-    private List<Ride> readAllRides() {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(db))) {
-            return (List<Ride>) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            return new ArrayList<>();
+    private void restoreHistory() {
+        this.ridesQuery.clear();
+        var hist = readAllRidesHistory();
+        for (RideEntry entry : hist) {
+            switch (entry.type) {
+                case STARTED -> ridesQuery.add(entry.ride);
+                case ENDED -> ridesQuery.remove(entry.ride);
+            }
         }
     }
-    private void writeAllRides() {
+
+    // read all text in a file
+    private String readFile() {
+        try (BufferedReader br = new BufferedReader(new FileReader(db))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while((line = br.readLine()) != null){
+                sb.append(line);
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            return "";
+        }
+    }
+    // read the events stored
+    public List<RideEntry> readAllRidesHistory() {
+        return Arrays.stream(readFile().split(sep))
+                .filter(s -> !Objects.equals(s, ""))
+                .map(RideEntry::fromJson)
+                .toList();
+    }
+    public void writeAllRidesHistory() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(db))) {
-            oos.writeObject(rides);
+            oos.writeObject(ridesQuery);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+    public void appendRideEntry(RideEntry ride) {
+        try (FileOutputStream fos = new FileOutputStream(db, true)) {
+            fos.write(sep.getBytes());
+            fos.write(ride.toJson().getBytes());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public enum RideEvent {
+        STARTED,
+        ENDED
+    }
+    @Serdeable
+    public record RideEntry(RideEvent type, Ride ride, Date timestamp) implements Serializable {
+        static public RideEntry fromJson(String json) {
+            try {
+                return mapper.readValue(json, RideEntry.class);
+            } catch (JsonProcessingException e) {
+                return null;
+            }
+        }
+        public String toJson() {
+            try {
+                return mapper.writeValueAsString(this);
+            } catch (JsonProcessingException e) {
+                return null;
+            }
         }
     }
 }
