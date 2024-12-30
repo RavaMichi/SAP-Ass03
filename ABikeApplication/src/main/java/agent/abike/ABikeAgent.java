@@ -4,14 +4,26 @@ import agent.core.AbstractAgent;
 import agent.core.AgentAction;
 import agent.core.Environment;
 import agent.core.V2d;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micronaut.configuration.kafka.annotation.KafkaKey;
+import io.micronaut.configuration.kafka.annotation.KafkaListener;
+import io.micronaut.configuration.kafka.annotation.OffsetReset;
+import io.micronaut.configuration.kafka.annotation.Topic;
 import io.micronaut.serde.annotation.Serdeable;
+import jakarta.inject.Inject;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.io.IOException;
+import java.util.*;
 
+/**
+ * Autonomous EBike implementation
+ */
+@KafkaListener(offsetReset = OffsetReset.EARLIEST)
 public class ABikeAgent extends AbstractAgent {
+
+    private ObjectMapper objectMapper = new ObjectMapper();
+    private ABikeKafkaClient client;
 
     private final String id;
     private int battery;
@@ -29,12 +41,20 @@ public class ABikeAgent extends AbstractAgent {
     }
     private ABikeState state = ABikeState.IDLE;
 
-    public ABikeAgent(String id, V2d startingPosition, Environment environment, long pollingRate) {
+    @Inject
+    public ABikeAgent(Environment environment, ABikeKafkaClient client) {
+        this("abike", new V2d(0,0), environment, 1000, client);
+    }
+
+    public ABikeAgent(String id, V2d startingPosition, Environment environment, long pollingRate, ABikeKafkaClient client) {
         super(environment, pollingRate);
         this.id = id;
         this.position = startingPosition;
         this.battery = 100;
         this.speed = 1;
+        this.client = client;
+
+        this.start();
     }
 
     @Override
@@ -69,6 +89,7 @@ public class ABikeAgent extends AbstractAgent {
                 actions.add(() -> {
                     double distance = position.distance(targetPosition);
                     if (distance < 0.1) {
+                        log("Target reached");
                         state = ABikeState.IDLE;
                     } else {
                         moveTo(targetPosition);
@@ -81,6 +102,7 @@ public class ABikeAgent extends AbstractAgent {
                     var st = nearestStation().orElse(new V2d(0,0));
                     double distance = position.distance(st);
                     if (distance < 0.1) {
+                        log("Recharged");
                         battery = 100;
                         state = ABikeState.IDLE;
                     } else {
@@ -91,10 +113,16 @@ public class ABikeAgent extends AbstractAgent {
             default:
                 break;
         }
+        // send update message
+        actions.add(() -> {
+            log("Sending update");
+            var bikeInfo = new BikeUpdateMessage(id, battery, position);
+            client.sendBikeUpdate("UPDATED", bikeInfo.toJson());
+        });
         return actions;
     }
 
-    
+
     private void moveTo(V2d t) {
         double distance = position.distance(t);
         double step = speed * pollingRate / 1000;
@@ -121,6 +149,55 @@ public class ABikeAgent extends AbstractAgent {
         System.out.println("BIKE[" + id + "] " + msg);
     }
 
+    @Topic("bike-topic")
+    public void receiveBikeEvent(@KafkaKey String event, String value) {
+        try {
+            switch (event) {
+
+                case "CALLED" -> {
+                    List<?> pair = objectMapper.readValue(value, List.class);
+                    var b = (BikeUpdateMessage)pair.get(0);
+                    var target = (V2d)pair.get(1);
+
+                    if (Objects.equals(b.id, this.id) && state == ABikeState.IDLE) {
+                        // get called
+                        log("Called");
+                        targetPosition = target;
+                        state = ABikeState.CALLED;
+                    }
+                }
+                case "CONNECTED" -> {
+                    if (Objects.equals(value, this.id)) {
+                        // bike is used by a user
+                        log("Connected");
+                        state = ABikeState.CONNECTED;
+                    }
+                }
+                case "DISCONNECTED" -> {
+                    if (Objects.equals(value, this.id)) {
+                        // bike is not used anymore by a user
+                        log("Disconnected");
+                        state = ABikeState.IDLE;
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+            System.out.println("Event ignored: " + event + value);
+        }
+    }
+
     @Serdeable
-    public record BikeUpdateMessage(String id, int battery, V2d position) {}
+    public record BikeUpdateMessage(String id, int battery, V2d position) {
+        public String toJson() {
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode rootNode = mapper.createObjectNode();
+            rootNode.put("id", id);
+            rootNode.put("batteryLevel", battery);
+            var pos = mapper.createObjectNode();
+            pos.put("x", position.x());
+            pos.put("y", position.y());
+            rootNode.set("position", pos);
+            return rootNode.toPrettyString();
+        }
+    }
 }
