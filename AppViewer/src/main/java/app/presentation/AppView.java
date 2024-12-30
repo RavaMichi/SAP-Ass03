@@ -48,7 +48,9 @@ public class AppView extends JFrame {
         new Thread(() -> {
             while (true) {
                 try {
+                    log("Poll service...");
                     refreshView();
+                    log("Done");
                     Thread.sleep(POLLING_TIME);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
