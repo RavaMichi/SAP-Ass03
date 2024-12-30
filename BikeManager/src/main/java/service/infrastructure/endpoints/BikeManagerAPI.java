@@ -8,6 +8,7 @@ import service.application.BikeManager;
 import service.domain.BikeOperationException;
 import service.domain.EBike;
 import service.domain.Station;
+import service.domain.V2d;
 import service.infrastructure.JsonConverter;
 import service.infrastructure.auth.AuthChecker;
 
@@ -51,6 +52,24 @@ public class BikeManagerAPI {
             if (authChecker.hasAdminPermissions(token)) {
                 bikeManager.addBike(req.id(), req.battery(), req.position());
                 return HttpResponse.created(new BMResponse("EBike " + req.id() + " added", false));
+            } else {
+                return HttpResponse.unauthorized();
+            }
+        } catch (BikeOperationException e) {
+            return HttpResponse.badRequest(new BMResponse(e.getMessage(), true));
+        }
+    }
+
+    @Post("/{id}/call")
+    public HttpResponse<BMResponse> callBike(
+            @Header(HttpHeaders.AUTHORIZATION) String token,
+            @Body V2d targetPosition,
+            String id
+    ) {
+        try {
+            if (authChecker.hasUserPermissions(token)) {
+                bikeManager.callBike(id, targetPosition);
+                return HttpResponse.created(new BMResponse("EBike " + id + " called", false));
             } else {
                 return HttpResponse.unauthorized();
             }
