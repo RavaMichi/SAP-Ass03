@@ -6,7 +6,7 @@ public abstract class AbstractAgent {
 
     private boolean stopped = false;
     private final Environment environment;
-    private final long pollingRate;
+    protected final long pollingRate;
 
     public AbstractAgent(Environment environment, long pollingRate) {
         this.environment = environment;
