@@ -97,6 +97,16 @@ public class KafkaEventController implements EventController {
     }
 
     @Override
+    public void sendBikeConnected(String id) {
+        eventClient.sendBikeEvent("CONNECTED", id);
+    }
+
+    @Override
+    public void sendBikeDisconnected(String id) {
+        eventClient.sendBikeEvent("DISCONNECTED", id);
+    }
+
+    @Override
     public void whenUserAdded(Consumer<String> handler) {
         this.userAddedConsumers.add(handler);
     }
@@ -104,6 +114,7 @@ public class KafkaEventController implements EventController {
     @Override
     public void sendUserAdded(String username) {
         eventClient.sendUserEvent("ADDED", username);
+        userAddedConsumers.forEach(c -> c.accept(username));
     }
 
     @Override
@@ -116,6 +127,7 @@ public class KafkaEventController implements EventController {
         try {
             List<User> users = List.of(new User(id, startCredits), new User(id, endCredits));
             eventClient.sendUserEvent("UPDATED", jsonMapper.writeValueAsString(users));
+            userUpdatedConsumers.forEach(c -> c.accept(id, endCredits));
         } catch (IOException ignored) {}
     }
 
@@ -128,6 +140,7 @@ public class KafkaEventController implements EventController {
     public void sendRideStarted(Ride ride) {
         try {
             eventClient.sendRideEvent("STARTED", jsonMapper.writeValueAsString(ride));
+            rideStartedConsumers.forEach(c -> c.accept(ride));
         } catch (IOException ignored) {}
     }
 
@@ -141,6 +154,7 @@ public class KafkaEventController implements EventController {
         try {
             List<?> items = List.of(ride, end);
             eventClient.sendRideEvent("ENDED", jsonMapper.writeValueAsString(items));
+            rideEndedConsumers.forEach(c -> c.accept(ride, end));
         } catch (IOException ignored) {}
     }
 

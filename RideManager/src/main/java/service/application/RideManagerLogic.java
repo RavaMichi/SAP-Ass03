@@ -54,6 +54,7 @@ public class RideManagerLogic implements RideManager {
 
         // dispatch event
         eventController.sendRideStarted(newRide);
+        eventController.sendBikeConnected(newRide.bikeId());
     }
 
     @Override
@@ -67,6 +68,7 @@ public class RideManagerLogic implements RideManager {
 
         // dispatch event
         eventController.sendRideEnded(ride, endTime);
+        eventController.sendBikeDisconnected(ride.bikeId());
     }
 
     @Override

@@ -9,6 +9,8 @@ import java.util.function.Consumer;
 public interface EventController {
     void whenBikeAdded(Consumer<String> handler);
     void sendBikeAdded(String id);
+    void sendBikeConnected(String id);
+    void sendBikeDisconnected(String id);
     void whenUserAdded(Consumer<String> handler);
     void sendUserAdded(String id);
     void whenUserUpdated(BiConsumer<String, Integer> handler);
