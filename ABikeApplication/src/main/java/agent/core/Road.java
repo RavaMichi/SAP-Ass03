@@ -1,4 +1,4 @@
-package core;
+package agent.core;
 
 import io.micronaut.serde.annotation.Serdeable;
 

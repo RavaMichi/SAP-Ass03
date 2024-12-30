@@ -1,4 +1,4 @@
-package core;
+package agent.core;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import io.micronaut.serde.annotation.Serdeable;

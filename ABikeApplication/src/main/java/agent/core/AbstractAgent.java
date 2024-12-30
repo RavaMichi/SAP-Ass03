@@ -1,4 +1,4 @@
-package core;
+package agent.core;
 
 import java.util.List;
 
