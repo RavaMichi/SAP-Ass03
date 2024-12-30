@@ -38,22 +38,22 @@ public class AccountManagerAPI {
         }
     }
 
-//    @Post("/add")
-//    public HttpResponse<AMResponse> addUser(
-//            @Header(HttpHeaders.AUTHORIZATION) String token,
-//            @Body UserAddRequest req
-//    ) {
-//        try {
-//            if (authChecker.isAuthorized(token)) {
-//                accountManager.addUser(req.username());
-//                return HttpResponse.created(new AMResponse("User " + req.username() + " added", false));
-//            } else {
-//                return HttpResponse.unauthorized();
-//            }
-//        } catch (AccountOperationException e) {
-//            return HttpResponse.badRequest(new AMResponse(e.getMessage(), true));
-//        }
-//    }
+    @Post("/add")
+    public HttpResponse<AMResponse> addUser(
+            @Header(HttpHeaders.AUTHORIZATION) String token,
+            @Body UserAddRequest req
+    ) {
+        try {
+            if (authChecker.isAuthorized(token)) {
+                accountManager.addUser(req.username());
+                return HttpResponse.created(new AMResponse("User " + req.username() + " added", false));
+            } else {
+                return HttpResponse.unauthorized();
+            }
+        } catch (AccountOperationException e) {
+            return HttpResponse.badRequest(new AMResponse(e.getMessage(), true));
+        }
+    }
 
     @Post("/{username}/add-credit")
     public HttpResponse<AMResponse> addCreditUser(
