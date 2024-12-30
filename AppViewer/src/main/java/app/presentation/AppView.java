@@ -66,7 +66,7 @@ public class AppView extends JFrame {
     public void refreshView() {
         centralPanel.refresh();
     }
-    
+
     private void log(String msg) {
         System.out.println("[EBikeApp] " + msg);
     }
