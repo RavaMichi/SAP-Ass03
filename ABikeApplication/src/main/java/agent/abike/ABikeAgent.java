@@ -12,7 +12,6 @@ import io.micronaut.configuration.kafka.annotation.OffsetReset;
 import io.micronaut.configuration.kafka.annotation.Topic;
 import io.micronaut.jackson.databind.JacksonDatabindMapper;
 import io.micronaut.json.JsonMapper;
-import io.micronaut.json.tree.JsonArray;
 import io.micronaut.serde.annotation.Serdeable;
 import jakarta.inject.Inject;
 
@@ -79,16 +78,16 @@ public class ABikeAgent extends AbstractAgent {
         List<AgentAction> actions = new ArrayList<>();
         switch (state) {
             case IDLE:
-                // batteryLevel check
+                // battery check
                 if (battery <= 5) {
-                    log("Low batteryLevel: going to recharge");
+                    log("Low battery: going to recharge");
                     actions.add(() -> state = ABikeState.NEED_RECHARGE);
                 }
                 break;
             case CALLED:
-                // batteryLevel check
+                // battery check
                 if (battery <= 5) {
-                    log("Low batteryLevel: going to recharge");
+                    log("Low battery: going to recharge");
                     actions.add(() -> state = ABikeState.NEED_RECHARGE);
                 }
                 // moving to target
@@ -199,12 +198,12 @@ public class ABikeAgent extends AbstractAgent {
     }
 
     @Serdeable
-    public record BikeUpdateMessage(String id, int batteryLevel, V2d position) {
+    public record BikeUpdateMessage(String id, int battery, V2d position) {
         public String toJson() {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode rootNode = mapper.createObjectNode();
             rootNode.put("id", id);
-            rootNode.put("batteryLevel", batteryLevel);
+            rootNode.put("battery", battery);
             var pos = mapper.createObjectNode();
             pos.put("x", position.x());
             pos.put("y", position.y());

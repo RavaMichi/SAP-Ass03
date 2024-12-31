@@ -14,6 +14,7 @@ import service.infrastructure.JsonConverter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -46,8 +47,15 @@ public class KafkaEventController implements EventController {
                     bikeAddedConsumers.forEach(c -> c.accept(bike));
                 }
                 case "UPDATED" -> {
-                    List<?> bikes = jsonMapper.readValue(value, List.class);
-                    bikeUpdatedConsumers.forEach(c -> c.accept((EBike)bikes.getFirst(), (EBike)bikes.get(1)));
+                    String splitter = "zzzzzz";
+                    List<String> pair = Arrays.stream(value.substring(1, value.length()-1)
+                                    .replaceAll("[\\n ]", "")
+                                    .replace("},{", "}" + splitter + "{")
+                                    .split(splitter))
+                            .toList();
+                    var oldBike = jsonMapper.readValue(pair.getFirst(), EBike.class);
+                    var newBike = jsonMapper.readValue(pair.getLast(), EBike.class);
+                    bikeUpdatedConsumers.forEach(c -> c.accept(oldBike, newBike));
                 }
                 case "CALLED" -> {
                     List<?> pair = jsonMapper.readValue(value, List.class);
