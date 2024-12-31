@@ -10,6 +10,9 @@ import io.micronaut.configuration.kafka.annotation.KafkaKey;
 import io.micronaut.configuration.kafka.annotation.KafkaListener;
 import io.micronaut.configuration.kafka.annotation.OffsetReset;
 import io.micronaut.configuration.kafka.annotation.Topic;
+import io.micronaut.jackson.databind.JacksonDatabindMapper;
+import io.micronaut.json.JsonMapper;
+import io.micronaut.json.tree.JsonArray;
 import io.micronaut.serde.annotation.Serdeable;
 import jakarta.inject.Inject;
 
@@ -22,7 +25,7 @@ import java.util.*;
 @KafkaListener(offsetReset = OffsetReset.EARLIEST)
 public class ABikeAgent extends AbstractAgent {
 
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private JsonMapper objectMapper = new JacksonDatabindMapper();
     private ABikeKafkaClient client;
 
     private final String id;
@@ -41,6 +44,8 @@ public class ABikeAgent extends AbstractAgent {
     }
     private ABikeState state = ABikeState.IDLE;
 
+    private BikeUpdateMessage lastState;
+
     @Inject
     public ABikeAgent(Environment environment, ABikeKafkaClient client) {
         this("abike", new V2d(0,0), environment, 1000, client);
@@ -54,6 +59,7 @@ public class ABikeAgent extends AbstractAgent {
         this.speed = 1;
         this.client = client;
 
+        lastState = new BikeUpdateMessage(id, battery, position);
         this.start();
     }
 
@@ -73,16 +79,16 @@ public class ABikeAgent extends AbstractAgent {
         List<AgentAction> actions = new ArrayList<>();
         switch (state) {
             case IDLE:
-                // battery check
+                // batteryLevel check
                 if (battery <= 5) {
-                    log("Low battery: going to recharge");
+                    log("Low batteryLevel: going to recharge");
                     actions.add(() -> state = ABikeState.NEED_RECHARGE);
                 }
                 break;
             case CALLED:
-                // battery check
+                // batteryLevel check
                 if (battery <= 5) {
-                    log("Low battery: going to recharge");
+                    log("Low batteryLevel: going to recharge");
                     actions.add(() -> state = ABikeState.NEED_RECHARGE);
                 }
                 // moving to target
@@ -117,7 +123,8 @@ public class ABikeAgent extends AbstractAgent {
         actions.add(() -> {
             log("Sending update");
             var bikeInfo = new BikeUpdateMessage(id, battery, position);
-            client.sendBikeUpdate("UPDATED", bikeInfo.toJson());
+            client.sendBikeUpdate("UPDATED", "[" + lastState.toJson() + "," + bikeInfo.toJson() + "]");
+            lastState = bikeInfo;
         });
         return actions;
     }
@@ -155,11 +162,15 @@ public class ABikeAgent extends AbstractAgent {
             switch (event) {
 
                 case "CALLED" -> {
-                    List<?> pair = objectMapper.readValue(value, List.class);
-                    var b = (BikeUpdateMessage)pair.get(0);
-                    var target = (V2d)pair.get(1);
-
-                    if (Objects.equals(b.id, this.id) && state == ABikeState.IDLE) {
+                    String splitter = "zzzzzz";
+                    List<String> pair = Arrays.stream(value.substring(1, value.length()-1)
+                            .replaceAll("[\\n ]", "")
+                            .replace("},{", "}" + splitter + "{")
+                            .split(splitter))
+                            .toList();
+                    String id = (objectMapper.readValue(pair.getFirst(), BikeUpdateMessage.class)).id();
+                    V2d target = objectMapper.readValue(pair.getLast(), V2d.class);
+                    if (Objects.equals(id, this.id) && state == ABikeState.IDLE) {
                         // get called
                         log("Called");
                         targetPosition = target;
@@ -182,17 +193,18 @@ public class ABikeAgent extends AbstractAgent {
                 }
             }
         } catch (IOException ignored) {
+            System.out.println(ignored.getMessage());
             System.out.println("Event ignored: " + event + value);
         }
     }
 
     @Serdeable
-    public record BikeUpdateMessage(String id, int battery, V2d position) {
+    public record BikeUpdateMessage(String id, int batteryLevel, V2d position) {
         public String toJson() {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode rootNode = mapper.createObjectNode();
             rootNode.put("id", id);
-            rootNode.put("batteryLevel", battery);
+            rootNode.put("batteryLevel", batteryLevel);
             var pos = mapper.createObjectNode();
             pos.put("x", position.x());
             pos.put("y", position.y());

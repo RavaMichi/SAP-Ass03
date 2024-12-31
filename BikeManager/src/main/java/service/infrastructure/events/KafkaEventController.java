@@ -103,12 +103,7 @@ public class KafkaEventController implements EventController {
 
     @Override
     public void sendBikeCalled(EBike bike, V2d target) {
-        try {
-            List<?> pair = List.of(bike, target);
-            eventClient.sendBikeEvent("CALLED", jsonMapper.writeValueAsString(pair));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        eventClient.sendBikeEvent("CALLED", "["+ JsonConverter.toJson(bike) + "," + JsonConverter.toJson(target) +"]");
     }
 
     @Override
@@ -118,10 +113,6 @@ public class KafkaEventController implements EventController {
 
     @Override
     public void sendStationAdded(Station station) {
-        try {
-            eventClient.sendStationEvent("ADDED", jsonMapper.writeValueAsString(station));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        eventClient.sendStationEvent("ADDED", JsonConverter.toJson(station));
     }
 }

@@ -5,21 +5,32 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import service.domain.EBike;
 import service.domain.Station;
+import service.domain.V2d;
 
 import java.util.List;
 
 public class JsonConverter {
     public static String toJson(Object obj) {
-        if (obj instanceof EBike) {
-            return toJson((EBike) obj);
-        } else if (obj instanceof Station) {
-            return toJson((Station) obj);
-        } else {
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                return mapper.writeValueAsString(obj);
-            } catch (JsonProcessingException e) {
-                return "{}";
+        switch (obj) {
+            case EBike eBike -> {
+                return toJson(eBike);
+            }
+            case Station station -> {
+                return toJson(station);
+            }
+            case List<?> objects -> {
+                return toJson(objects);
+            }
+            case V2d pos -> {
+                return toJson(pos);
+            }
+            case null, default -> {
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    return mapper.writeValueAsString(obj);
+                } catch (JsonProcessingException e) {
+                    return "{}";
+                }
             }
         }
     }
@@ -38,6 +49,13 @@ public class JsonConverter {
         return "[\n" +
                 objs.stream().map(JsonConverter::toJson).reduce((i,f) -> i + ",\n" + f).orElse("")
                 + "\n]";
+    }
+    public static String toJson(V2d obj) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode rootNode = mapper.createObjectNode();
+        rootNode.put("x", obj.x());
+        rootNode.put("y", obj.y());
+        return rootNode.toPrettyString();
     }
     public static String toJson(Station obj) {
         ObjectMapper mapper = new ObjectMapper();
