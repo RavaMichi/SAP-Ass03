@@ -144,6 +144,8 @@
                 <h2>Call A-Bike</h2>
                 <form id="callBikeForm">
                     <input type="text" id="callBikeId" placeholder="Enter Bike ID" required>
+                    <input type="number" id="posX" placeholder="X position" required>
+                    <input type="number" id="posY" placeholder="Y position" required>
                     <button type="submit">Call Bike</button>
                 </form>
             `;
@@ -157,13 +159,17 @@
         const callBike = async (e) => {
             e.preventDefault();
             const bikeIdToCall = document.getElementById('callBikeId').value;
+            const posX = document.getElementById('posX').value;
+            const posY = document.getElementById('posY').value;
 
             try {
                 const response = await fetch(`http://localhost:8080/bikes/${bikeIdToCall}/call`, {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'Authorization': token,
                     },
+                    body: JSON.stringify({ x: posX, y: posY }),
                 });
 
                 if (!response.ok) throw new Error('Failed to call bike');

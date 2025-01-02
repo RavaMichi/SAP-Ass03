@@ -59,9 +59,6 @@
             color: red;
             text-align: center;
         }
-        #metrics {
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -73,7 +70,6 @@
             <input type="password" id="password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
-        <div class="link" id="registerLink">Don't have an account? Register</div>
     </div>
 
     <script>
@@ -81,10 +77,9 @@
         const errorDiv = () => document.getElementById('error');
         let token = '';
 
-
         const login = async (e) => {
             e.preventDefault();
-            username = document.getElementById('username').value;
+            const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
             try {
@@ -98,8 +93,7 @@
                 token = await response.text();
 
                 alert('Login successful!');
-
-                showAddBikeForm();
+                showAdminForms();
             } catch (error) {
                 console.error(error);
                 errorDiv().textContent = "Login failed. Please try again.";
@@ -120,55 +114,81 @@
                         'Content-Type': 'application/json',
                         'Authorization': token
                     },
-                    body: JSON.stringify({ id: bikeId, battery, position: {x: posX, y: posY} }),
+                    body: JSON.stringify({ id: bikeId, battery, position: { x: posX, y: posY } }),
                 });
 
                 if (!response.ok) throw new Error('Insertion failed');
 
                 alert('E-Bike registered successfully!');
-
             } catch (error) {
                 console.error(error);
                 errorDiv().textContent = "Error registering the E-Bike.";
             }
         };
 
-        const showLoginForm = () => {
-            app.innerHTML = `
-                <h2>Login</h2>
-                <div class="error" id="error"></div>
-                <form id="loginForm">
-                    <input type="text" id="username" placeholder="Username" required>
-                    <input type="password" id="password" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                </form>
-            `;
-            document.getElementById('loginForm').addEventListener('submit', login);
+        const addRechargeStation = async (e) => {
+            e.preventDefault();
+            const stationId = document.getElementById('stationId').value;
+            const posX = document.getElementById('stationPosX').value;
+            const posY = document.getElementById('stationPosY').value;
+
+            try {
+                const response = await fetch('http://localhost:8080/bikes/stations/add', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': token
+                    },
+                    body: JSON.stringify({ id: stationId, position: { x: posX, y: posY } }),
+                });
+
+                if (!response.ok) throw new Error('Insertion failed');
+
+                alert('Recharge Station registered successfully!');
+            } catch (error) {
+                console.error(error);
+                errorDiv().textContent = "Error registering the Recharge Station.";
+            }
         };
-        
-        const showAddBikeForm = () => {
+
+        const showAdminForms = () => {
             app.innerHTML = `
-                <h2>Register new E-Bike</h2>
+                <h2>Admin Panel</h2>
                 <div class="error" id="error"></div>
+
+                <h3>Register new E-Bike</h3>
                 <form id="addBikeForm">
                     <input type="text" id="bikeId" placeholder="ID Bike" required>
                     <input type="number" id="battery" placeholder="Battery level" required>
                     <input type="number" id="posX" placeholder="X position" required>
                     <input type="number" id="posY" placeholder="Y position" required>
-                    <button type="submit">Register</button>
-                    <button type="button" id="metrics">Metrics</button>
+                    <button type="submit">Register E-Bike</button>
+                </form>
+
+                <h3>Add Recharge Station</h3>
+                <form id="addStationForm">
+                    <input type="text" id="stationId" placeholder="Station ID" required>
+                    <input type="number" id="stationPosX" placeholder="X position" required>
+                    <input type="number" id="stationPosY" placeholder="Y position" required>
+                    <button type="submit">Add Station</button>
                 </form>
             `;
 
             document.getElementById('addBikeForm').addEventListener('submit', addBike);
-            document.getElementById('metrics').addEventListener('click', (e) => {
-                e.preventDefault();
-                window.location.href = "http://localhost:9090/";
-            });
+            document.getElementById('addStationForm').addEventListener('submit', addRechargeStation);
         };
 
         // Initialize with login form
-        showLoginForm();
+        app.innerHTML = `
+            <h2>Login</h2>
+            <div class="error" id="error"></div>
+            <form id="loginForm">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+        `;
+        document.getElementById('loginForm').addEventListener('submit', login);
     </script>
 </body>
 </html>
