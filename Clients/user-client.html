@@ -139,6 +139,41 @@
             }
         };
 
+        const showCallBikeForm = () => {
+            const callBikeForm = `
+                <h2>Call A-Bike</h2>
+                <form id="callBikeForm">
+                    <input type="text" id="callBikeId" placeholder="Enter Bike ID" required>
+                    <button type="submit">Call Bike</button>
+                </form>
+            `;
+            const callBikeContainer = document.createElement('div');
+            callBikeContainer.innerHTML = callBikeForm;
+            app.appendChild(callBikeContainer);
+
+            document.getElementById('callBikeForm').addEventListener('submit', callBike);
+        };
+
+        const callBike = async (e) => {
+            e.preventDefault();
+            const bikeIdToCall = document.getElementById('callBikeId').value;
+
+            try {
+                const response = await fetch(`http://localhost:8080/bikes/${bikeIdToCall}/call`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': token,
+                    },
+                });
+
+                if (!response.ok) throw new Error('Failed to call bike');
+                alert('Bike called successfully!');
+            } catch (error) {
+                console.error(error);
+                errorDiv().textContent = 'Failed to call bike. Please try again.';
+            }
+        };
+
         const showConnectionForm = () => {
             app.innerHTML = `
                 <h2>Connect to E-Bike</h2>
@@ -150,6 +185,7 @@
             `;
             document.getElementById('connectForm').addEventListener('submit', connectToBike);
             showCreditRechargeForm();
+            showCallBikeForm();
         };
 
         
@@ -162,6 +198,7 @@
             `;
             document.getElementById('disconnectButton').addEventListener('click', disconnectFromBike);
             showCreditRechargeForm();
+            showCallBikeForm();
         };
 
         const login = async (e) => {
