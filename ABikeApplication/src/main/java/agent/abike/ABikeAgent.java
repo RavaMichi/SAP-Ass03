@@ -98,6 +98,7 @@ public class ABikeAgent extends AbstractAgent {
                         state = ABikeState.IDLE;
                     } else {
                         moveTo(targetPosition);
+                        battery -= 1;
                     }
                 });
                 break;
